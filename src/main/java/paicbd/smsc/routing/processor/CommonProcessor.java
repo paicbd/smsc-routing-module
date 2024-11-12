@@ -76,12 +76,27 @@ public class CommonProcessor {
         event.setDestAddrNpi(Objects.isNull(event.getDestAddrNpi()) ? smppHttpSettings.getDestAddrNpi() : event.getDestAddrNpi());
         event.setDataCoding(Objects.isNull(event.getDataCoding()) ? smppHttpSettings.getEncodingGsm7() : event.getDataCoding());
         event.setEsmClass(Objects.isNull(event.getEsmClass()) ? 0 : event.getEsmClass());
-        if (Objects.isNull(event.getValidityPeriod())) {
-            event.setValidityPeriod(String.valueOf(smppHttpSettings.getValidityPeriod()));
-            return;
+
+        adjustValidityPeriod(event, smppHttpSettings);
+    }
+
+    private void adjustValidityPeriod(MessageEvent event, GeneralSettings smppHttpSettings) {
+        long smscValidityPeriod;
+        if (Objects.isNull(event.getStringValidityPeriod())) {
+            long messageValidityPeriod = event.getValidityPeriod() == 0
+                    ? smppHttpSettings.getValidityPeriod()
+                    : event.getValidityPeriod();
+            smscValidityPeriod = getAdjustedValidityPeriod(messageValidityPeriod, smppHttpSettings.getMaxValidityPeriod());
+            event.setStringValidityPeriod(Converter.secondsToRelativeValidityPeriod(smscValidityPeriod));
+        } else {
+            long seconds = Converter.smppValidityPeriodToSeconds(event.getStringValidityPeriod());
+            smscValidityPeriod = getAdjustedValidityPeriod(seconds, smppHttpSettings.getMaxValidityPeriod());
         }
-        event.setValidityPeriod(Integer.parseInt(event.getValidityPeriod()) <= smppHttpSettings.getMaxValidityPeriod() ?
-                event.getValidityPeriod() : String.valueOf(smppHttpSettings.getMaxValidityPeriod()));
+        event.setValidityPeriod(smscValidityPeriod);
+    }
+
+    private long getAdjustedValidityPeriod(long validityPeriod, long maxValidityPeriod) {
+        return Math.min(validityPeriod, maxValidityPeriod);
     }
 
     public void processMessage(MessageEvent messageEvent) {
@@ -258,7 +273,7 @@ public class CommonProcessor {
         if (Boolean.TRUE.equals(messageEvent.getCheckSubmitSmResponse())) {
             String key = getKeyFromMessageEvent(messageEvent);
             String resultListName = chooseResultListNameBasedOnProtocol(messageEvent);
-            String resultInRawFormat = jedisCluster.hget(resultListName, key);
+            String resultInRawFormat = jedisCluster.hget(resultListName, key.toUpperCase());
             handleResultAvailability(resultInRawFormat, key, messageEvent);
 
             UtilsRecords.SubmitSmResponseEvent result = Converter.stringToObject(resultInRawFormat, new TypeReference<>() {
