@@ -40,17 +40,12 @@ public class BeansDefinition {
     public ConcurrentMap<Integer, Gateway> gateways() {
         return new ConcurrentHashMap<>();
     }
-    
-    @Bean
-    public ConcurrentMap<String, Integer> systemIdHandler() {
-        return new ConcurrentHashMap<>();
-    }
-    
+
     @Bean
     public ConcurrentMap<Integer, ServiceProvider> serviceProviders() {
         return new ConcurrentHashMap<>();
     }
-    
+
     @Bean
     public ConcurrentMap<Integer, AtomicLong> creditUsed() {
         return new ConcurrentHashMap<>();
@@ -58,7 +53,7 @@ public class BeansDefinition {
 
     @Bean
     public SocketSession socketSession() {
-        return new SocketSession("rt");
+        return new SocketSession("routing");
     }
 
     @Bean
