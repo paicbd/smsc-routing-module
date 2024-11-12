@@ -59,6 +59,7 @@ class CommonProcessorTest {
         MessageEvent event = StaticMethods.stringAsEvent(stringEvent);
         GeneralSettings generalSettings = new GeneralSettings();
         generalSettings.setValidityPeriod(120);
+        generalSettings.setMaxValidityPeriod(240);
         when(loadSettings.getSmppHttpSettings()).thenReturn(generalSettings);
         assertNotNull(event);
         assertDoesNotThrow(() -> commonProcessor.setUpInitialSettings(event));
@@ -72,13 +73,20 @@ class CommonProcessorTest {
         event.setRegisteredDelivery(null);
         assertDoesNotThrow(() -> commonProcessor.setUpInitialSettings(event));
 
-        event.setValidityPeriod(null);
+        event.setValidityPeriod(0);
         assertDoesNotThrow(() -> commonProcessor.setUpInitialSettings(event));
 
         assertEquals(0, event.getSourceAddrTon());
         assertEquals(0, event.getSourceAddrNpi());
         assertEquals(0, event.getDestAddrTon());
-        assertEquals("120", event.getValidityPeriod());
+        assertEquals(60, event.getValidityPeriod());
+
+        event.setStringValidityPeriod(null);
+        event.setValidityPeriod(0);
+        assertDoesNotThrow(() -> commonProcessor.setUpInitialSettings(event));
+
+        event.setValidityPeriod(120);
+        assertDoesNotThrow(() -> commonProcessor.setUpInitialSettings(event));
     }
 
     @Test

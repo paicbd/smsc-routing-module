@@ -56,13 +56,6 @@ class BeansDefinitionTest {
     }
 
     @Test
-    void systemIdHandler() {
-        ConcurrentMap<String, Integer> systemIdHandler = beansDefinition.systemIdHandler();
-        assertNotNull(systemIdHandler);
-        assertTrue(systemIdHandler.isEmpty());
-    }
-
-    @Test
     void serviceProviders() {
         ConcurrentMap<Integer, ServiceProvider> serviceProviders = beansDefinition.serviceProviders();
         assertNotNull(serviceProviders);

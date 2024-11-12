@@ -16,34 +16,34 @@ public class AppProperties {
     private List<String> redisNodes;
 
     @Value("${redis.threadPool.maxTotal}")
-    private int redisMaxTotal = 20;
+    private int redisMaxTotal;
 
     @Value("${redis.threadPool.maxIdle}")
-    private int redisMaxIdle = 20;
+    private int redisMaxIdle;
 
     @Value("${redis.threadPool.minIdle}")
-    private int redisMinIdle = 1;
+    private int redisMinIdle;
 
     @Value("${redis.threadPool.blockWhenExhausted}")
-    private boolean redisBlockWhenExhausted = true;
+    private boolean redisBlockWhenExhausted;
 
     @Value("${redis.preMessageList}")
     private String preMessageList;
 
     @Value("${redis.preMessage.itemsToProcess}")
-    private int preMessageItemsToProcess = 1;
+    private int preMessageItemsToProcess;
 
     @Value("${redis.preMessage.workers}")
-    private int preMessageWorkers = 1;
+    private int preMessageWorkers;
 
     @Value("${redis.preDeliverList}")
     private String preDeliverList;
 
     @Value("${redis.preDeliver.itemsToProcess}")
-    private int preDeliverItemsToProcess = 1;
+    private int preDeliverItemsToProcess;
 
     @Value("${redis.preDeliver.workers}")
-    private int preDeliverWorkers = 1;
+    private int preDeliverWorkers;
 
     @Value("${redis.smpp.messageList}")
     private String smppMessageList;
@@ -67,7 +67,7 @@ public class AppProperties {
     private String httpDlrList;
 
     @Value("${websocket.server.enabled}")
-    private boolean wsEnabled = true;
+    private boolean wsEnabled;
 
     @Value("${websocket.server.host}")
     private String wsHost;

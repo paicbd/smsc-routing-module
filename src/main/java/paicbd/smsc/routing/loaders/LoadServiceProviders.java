@@ -13,6 +13,7 @@ import com.paicbd.smsc.dto.ServiceProvider;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.Assert;
 import paicbd.smsc.routing.util.AppProperties;
 import redis.clients.jedis.JedisCluster;
 
@@ -22,25 +23,11 @@ import redis.clients.jedis.JedisCluster;
 public class LoadServiceProviders {
 	private final JedisCluster jedisCluster;
     private final AppProperties appProperties;
-	private final ConcurrentMap<String, Integer> serviceProvidersSystemId;
     private final ConcurrentMap<Integer, ServiceProvider> serviceProviders;
     
     @PostConstruct
     public void init() {
     	this.loadServiceProviders();
-    }
-    
-    public String getSystemIdByNetworkId(int networkId) {
-		ServiceProvider currentSp = this.serviceProviders.get(networkId);
-		if (Objects.isNull(currentSp)) {
-			log.warn("Service provider not found for network id: {}", networkId);
-			return null;
-		}
-		return currentSp.getSystemId();
-    }
-    
-    public int getNetworkIdBySystemId(String systemId) {
-		return this.serviceProvidersSystemId.getOrDefault(systemId, 0);
     }
     
     public void loadServiceProviders() {
@@ -58,7 +45,6 @@ public class LoadServiceProviders {
 				});
 	    		
 	    		serviceProviders.put(serviceProvider.getNetworkId(), serviceProvider);
-	    		serviceProvidersSystemId.put(serviceProvider.getSystemId(), serviceProvider.getNetworkId());
     		} catch (Exception e) {
                 log.error("Error loading service providers: {}", e.getMessage());
             }
@@ -66,31 +52,29 @@ public class LoadServiceProviders {
     	log.info("Finished loading service providers for {} networkIds", serviceProviders.size());
     }
     
-    public void updateServiceProvider(String systemId) {
-    	if (systemId != null) {
-    		String spInRaw = jedisCluster.hget(this.appProperties.getServiceProvidersHash(), systemId);
+    public void updateServiceProvider(String networkId) {
+    	if (networkId != null) {
+    		String spInRaw = jedisCluster.hget(this.appProperties.getServiceProvidersHash(), networkId);
     		if (Objects.isNull(spInRaw)) {
                 log.warn("Service providers was not found on updateServiceProvider");
                 return;
             }
-    		
-    		ServiceProvider serviceProvider = Converter.stringToObject(spInRaw, new TypeReference<>() {
-			});
+    		ServiceProvider serviceProvider = Converter.stringToObject(spInRaw, ServiceProvider.class);
+			Assert.notNull(serviceProvider, "An error occurred while casting ServiceProvider in updateServiceProvider");
+
     		serviceProviders.put(serviceProvider.getNetworkId(), serviceProvider);
-    		serviceProvidersSystemId.put(serviceProvider.getSystemId(), serviceProvider.getNetworkId());
-    		log.info("Updated service provider for system id {}: {}", systemId, serviceProvider);
+    		log.info("Updated service provider for system id {}: {}", networkId, serviceProvider);
     	} else {
     		log.warn("SystemId to update service provider is null");
         }
     }
     
-    public void deleteServiceProvider(String systemId) {
-    	if (systemId != null) {
-    		serviceProviders.remove(serviceProvidersSystemId.getOrDefault(systemId, 0));
-    		serviceProvidersSystemId.remove(systemId);
-    		log.info("Deleted service provider for system id: {}", systemId);
+    public void deleteServiceProvider(String networkId) {
+    	if (networkId != null) {
+    		serviceProviders.remove(Integer.parseInt(networkId));
+    		log.info("Deleted service provider for network id: {}", networkId);
     	} else {
-            log.warn("SystemId to delete service provider is null");
+            log.warn("networkId to delete service provider is null");
         }
     }
 }

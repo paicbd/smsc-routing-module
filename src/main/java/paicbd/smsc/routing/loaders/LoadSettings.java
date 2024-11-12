@@ -59,8 +59,7 @@ public class LoadSettings {
         for (Map.Entry<String, String> entry : hashValues.entrySet()) {
             try {
                 String data = entry.getValue();
-                Ss7Settings ss7Setting = Converter.stringToObject(data, new TypeReference<>() {
-                });
+                Ss7Settings ss7Setting = Converter.stringToObject(data, Ss7Settings.class);
                 this.addToSs7Map(Integer.parseInt(entry.getKey()), ss7Setting);
             } catch (Exception e) {
                 log.error("Service provider init error {}", e.getMessage());
