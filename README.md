@@ -1,4 +1,4 @@
-The `smsc-routing-module` is a service responsible for routing messages in the SMSC (Short Message Service Center) environment. This service interacts with Redis clusters, processes different types of messages (SMPP, HTTP, SS7), and manages delivery statuses (DLR). It is highly configurable with support for multi-threaded processing, WebSocket communication, and integration with a backend for tracking service provider credits.
+The `smsc-routing-module` is a service responsible for routing messages in the Short Message Service Center (SMSC) environment. This service interacts with Redis clusters, processes different types of messages (SMPP, HTTP, SS7), and manages Delivery Receipt (DLR). It is highly configurable with support for multi-threaded processing, WebSocket communication, and integration with a backend for tracking service provider credits.
 
 **Key Configurable Variables:**
 - **JVM Settings:**
