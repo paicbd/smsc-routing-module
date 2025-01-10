@@ -13,6 +13,7 @@ import java.util.List;
 
 import static paicbd.smsc.routing.util.AppConstants.CONNECT_HTTP_GATEWAY;
 import static paicbd.smsc.routing.util.AppConstants.CONNECT_SMPP_GATEWAY;
+import static paicbd.smsc.routing.util.AppConstants.CONNECT_SS7_GATEWAY;
 import static paicbd.smsc.routing.util.AppConstants.DELETE_HTTP_GATEWAY;
 import static paicbd.smsc.routing.util.AppConstants.DELETE_ROUTING_RULE;
 import static paicbd.smsc.routing.util.AppConstants.DELETE_SERVICE_HTTP_PROVIDER_ENDPOINT;
@@ -44,6 +45,7 @@ public class WebSocketConfig {
                 DELETE_ROUTING_RULE,
                 UPDATE_GS_SMPP_HTTP,
                 UPDATE_SS7_CONFIG,
+                CONNECT_SS7_GATEWAY,
                 DELETE_SS7_CONFIG,
                 UPDATE_SMPP_GATEWAY,
                 CONNECT_SMPP_GATEWAY,

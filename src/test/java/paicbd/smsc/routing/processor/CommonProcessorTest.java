@@ -8,6 +8,8 @@ import com.paicbd.smsc.dto.RoutingRule;
 import com.paicbd.smsc.dto.Ss7Settings;
 import com.paicbd.smsc.exception.RTException;
 import com.paicbd.smsc.utils.Converter;
+import lombok.SneakyThrows;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -20,6 +22,7 @@ import paicbd.smsc.routing.util.RoutingMatcher;
 import paicbd.smsc.routing.util.StaticMethods;
 import redis.clients.jedis.JedisCluster;
 
+import java.lang.reflect.Field;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -52,6 +55,14 @@ class CommonProcessorTest {
 
     @InjectMocks
     CommonProcessor commonProcessor;
+
+    @BeforeEach
+    @SneakyThrows
+    public void setUp() {
+        Field gatewaysField = CommonProcessor.class.getDeclaredField("gateways");
+        gatewaysField.setAccessible(true);
+        gatewaysField.set(commonProcessor, gateways);
+    }
 
     @Test
     void setUpInitialSettings() {
@@ -117,6 +128,28 @@ class CommonProcessorTest {
         MessageEvent event = StaticMethods.stringAsEvent(stringEvent);
         assertNotNull(event);
         String routingRuleString = "{\"id\":2,\"origin_network_id\":4,\"regex_source_addr\":\"\",\"regex_source_addr_ton\":\"\",\"regex_source_addr_npi\":\"\",\"regex_destination_addr\":\"\",\"regex_dest_addr_ton\":\"\",\"regex_dest_addr_npi\":\"\",\"regex_imsi_digits_mask\":\"\",\"regex_network_node_number\":\"\",\"regex_calling_party_address\":\"\",\"is_sri_response\":false,\"destination\":[{\"priority\":1,\"network_id\":6,\"dest_protocol\":\"SMPP\",\"network_type\":\"GW\"}],\"new_source_addr\":\"\",\"new_source_addr_ton\":-1,\"new_source_addr_npi\":-1,\"new_destination_addr\":\"\",\"new_dest_addr_ton\":-1,\"new_dest_addr_npi\":-1,\"add_source_addr_prefix\":\"\",\"add_dest_addr_prefix\":\"\",\"remove_source_addr_prefix\":\"\",\"remove_dest_addr_prefix\":\"\",\"new_gt_sccp_addr_mt\":\"\",\"drop_map_sri\":false,\"network_id_to_map_sri\":-1,\"network_id_to_permanent_failure\":-1,\"drop_temp_failure\":false,\"network_id_temp_failure\":-1,\"check_sri_response\":false,\"origin_protocol\":\"SMPP\",\"origin_network_type\":\"SP\",\"has_filter_rules\":false,\"has_action_rules\":false}";
+        String stringSmppGw = "{\"network_id\":6,\"name\":\"smppgw\",\"system_id\":\"smppgw\",\"password\":\"1234\",\"ip\":\"192.168.100.20\",\"port\":2777,\"bind_type\":\"TRANSCEIVER\",\"system_type\":\"\",\"interface_version\":\"IF_50\",\"sessions_number\":1,\"address_ton\":0,\"address_npi\":0,\"address_range\":null,\"tps\":10,\"status\":\"STOPPED\",\"enabled\":1,\"enquire_link_period\":30000,\"enquire_link_timeout\":0,\"request_dlr\":1,\"no_retry_error_code\":\"\",\"retry_alternate_destination_error_code\":\"\",\"bind_timeout\":5000,\"bind_retry_period\":10000,\"pdu_timeout\":5000,\"pdu_degree\":1,\"thread_pool_size\":100,\"mno_id\":1,\"tlv_message_receipt_id\":false,\"message_id_decimal_format\":false,\"active_sessions_numbers\":0,\"protocol\":\"SMPP\",\"auto_retry_error_code\":\"\",\"encoding_iso88591\":3,\"encoding_gsm7\":0,\"encoding_ucs2\":2,\"split_message\":false,\"split_smpp_type\":\"TLV\"}";
+        Gateway smppGw = Converter.stringToObject(stringSmppGw, new TypeReference<>() {});
+
+        gateways.put(event.getDestNetworkId(), smppGw);
+        gateways.put(event.getDestNetworkId(), smppGw);
+
+        commonProcessor = new CommonProcessor(loadSettings, jedisCluster, appProperties, routingHelper, routingMatcher, gateways, ss7SettingsMap);
+        when(this.gateways.get(anyInt())).thenReturn(smppGw);
+        RoutingRule routingRule = Converter.stringToObject(routingRuleString, new TypeReference<>() {
+        });
+        when(routingMatcher.getRouting(event)).thenReturn(routingRule);
+        assertDoesNotThrow(() -> commonProcessor.processMessage(event));
+    }
+
+    @Test
+    void processMessage_DLR_False_To_SS7() {
+        String stringEvent = "{\"msisdn\":null,\"id\":\"1722442489770-7788608933795\",\"message_id\":\"1722442489766-7788604799226\",\"system_id\":\"smppsp\",\"deliver_sm_id\":null,\"deliver_sm_server_id\":null,\"command_status\":0,\"sequence_number\":2,\"source_addr_ton\":1,\"source_addr_npi\":1,\"source_addr\":\"6666\",\"dest_addr_ton\":1,\"dest_addr_npi\":1,\"destination_addr\":\"5555\",\"esm_class\":3,\"validity_period\":\"60\",\"registered_delivery\":1,\"data_coding\":0,\"sm_default_msg_id\":0,\"short_message\":\"Hello!\",\"delivery_receipt\":null,\"status\":null,\"error_code\":null,\"check_submit_sm_response\":null,\"optional_parameters\":null,\"origin_network_type\":\"SP\",\"origin_protocol\":\"SMPP\",\"origin_network_id\":3,\"dest_network_type\":\"GW\",\"dest_protocol\":\"SMPP\",\"dest_network_id\":1,\"routing_id\":1,\"address_nature_msisdn\":null,\"numbering_plan_msisdn\":null,\"remote_dialog_id\":null,\"local_dialog_id\":null,\"sccp_called_party_address_pc\":null,\"sccp_called_party_address_ssn\":null,\"sccp_called_party_address\":null,\"sccp_calling_party_address_pc\":null,\"sccp_calling_party_address_ssn\":null,\"sccp_calling_party_address\":null,\"global_title\":null,\"global_title_indicator\":null,\"translation_type\":null,\"smsc_ssn\":null,\"hlr_ssn\":null,\"msc_ssn\":null,\"map_version\":null,\"is_retry\":false,\"retry_dest_network_id\":\"\",\"retry_number\":null,\"is_last_retry\":false,\"is_network_notify_error\":false,\"due_delay\":0,\"accumulated_time\":0,\"drop_map_sri\":false,\"network_id_to_map_sri\":-1,\"network_id_to_permanent_failure\":-1,\"drop_temp_failure\":false,\"network_id_temp_failure\":-1,\"imsi\":null,\"network_node_number\":null,\"network_node_number_nature_of_address\":null,\"network_node_number_numbering_plan\":null,\"mo_message\":false,\"is_sri_response\":false,\"check_sri_response\":false,\"msg_reference_number\":null,\"total_segment\":null,\"segment_sequence\":null,\"originator_sccp_address\":null,\"udhi\":\"0\",\"udh_json\":null,\"parent_id\":null,\"is_dlr\":false,\"message_parts\":null}";
+        MessageEvent event = StaticMethods.stringAsEvent(stringEvent);
+        assertNotNull(event);
+        String routingRuleString = "{\"id\":2,\"origin_network_id\":4,\"regex_source_addr\":\"\",\"regex_source_addr_ton\":\"\",\"regex_source_addr_npi\":\"\",\"regex_destination_addr\":\"\",\"regex_dest_addr_ton\":\"\",\"regex_dest_addr_npi\":\"\",\"regex_imsi_digits_mask\":\"\",\"regex_network_node_number\":\"\",\"regex_calling_party_address\":\"\",\"is_sri_response\":false,\"destination\":[{\"priority\":1,\"network_id\":6,\"dest_protocol\":\"SS7\",\"network_type\":\"GW\"}],\"new_source_addr\":\"\",\"new_source_addr_ton\":-1,\"new_source_addr_npi\":-1,\"new_destination_addr\":\"\",\"new_dest_addr_ton\":-1,\"new_dest_addr_npi\":-1,\"add_source_addr_prefix\":\"\",\"add_dest_addr_prefix\":\"\",\"remove_source_addr_prefix\":\"\",\"remove_dest_addr_prefix\":\"\",\"new_gt_sccp_addr_mt\":\"\",\"drop_map_sri\":false,\"network_id_to_map_sri\":-1,\"network_id_to_permanent_failure\":-1,\"drop_temp_failure\":false,\"network_id_temp_failure\":-1,\"check_sri_response\":false,\"origin_protocol\":\"SMPP\",\"origin_network_type\":\"SP\",\"has_filter_rules\":false,\"has_action_rules\":false}";
+
+        commonProcessor = new CommonProcessor(loadSettings, jedisCluster, appProperties, routingHelper, routingMatcher, gateways, ss7SettingsMap);
         RoutingRule routingRule = Converter.stringToObject(routingRuleString, new TypeReference<>() {
         });
         when(routingMatcher.getRouting(event)).thenReturn(routingRule);
@@ -152,31 +185,10 @@ class CommonProcessorTest {
     }
 
     @Test
-    void applyingRoutingRuleActions() {
-        String stringEvent = "{\"msisdn\":null,\"id\":\"1722442489770-7788608933795\",\"message_id\":\"1722442489766-7788604799226\",\"system_id\":\"smppsp\",\"deliver_sm_id\":null,\"deliver_sm_server_id\":null,\"command_status\":0,\"sequence_number\":2,\"source_addr_ton\":1,\"source_addr_npi\":1,\"source_addr\":\"6666\",\"dest_addr_ton\":1,\"dest_addr_npi\":1,\"destination_addr\":\"5555\",\"esm_class\":3,\"validity_period\":\"60\",\"registered_delivery\":1,\"data_coding\":0,\"sm_default_msg_id\":0,\"short_message\":\"Hello!\",\"delivery_receipt\":null,\"status\":null,\"error_code\":null,\"check_submit_sm_response\":null,\"optional_parameters\":null,\"origin_network_type\":\"SP\",\"origin_protocol\":\"SMPP\",\"origin_network_id\":3,\"dest_network_type\":\"GW\",\"dest_protocol\":\"SMPP\",\"dest_network_id\":1,\"routing_id\":1,\"address_nature_msisdn\":null,\"numbering_plan_msisdn\":null,\"remote_dialog_id\":null,\"local_dialog_id\":null,\"sccp_called_party_address_pc\":null,\"sccp_called_party_address_ssn\":null,\"sccp_called_party_address\":null,\"sccp_calling_party_address_pc\":null,\"sccp_calling_party_address_ssn\":null,\"sccp_calling_party_address\":null,\"global_title\":null,\"global_title_indicator\":null,\"translation_type\":null,\"smsc_ssn\":null,\"hlr_ssn\":null,\"msc_ssn\":null,\"map_version\":null,\"is_retry\":false,\"retry_dest_network_id\":\"\",\"retry_number\":null,\"is_last_retry\":false,\"is_network_notify_error\":false,\"due_delay\":0,\"accumulated_time\":0,\"drop_map_sri\":false,\"network_id_to_map_sri\":-1,\"network_id_to_permanent_failure\":-1,\"drop_temp_failure\":false,\"network_id_temp_failure\":-1,\"imsi\":null,\"network_node_number\":null,\"network_node_number_nature_of_address\":null,\"network_node_number_numbering_plan\":null,\"mo_message\":false,\"is_sri_response\":false,\"check_sri_response\":false,\"msg_reference_number\":null,\"total_segment\":null,\"segment_sequence\":null,\"originator_sccp_address\":null,\"udhi\":\"0\",\"udh_json\":null,\"parent_id\":null,\"is_dlr\":false,\"message_parts\":null}";
-        MessageEvent event = StaticMethods.stringAsEvent(stringEvent);
-        assertNotNull(event);
-        String routingRuleString = "{\"id\":2,\"origin_network_id\":6,\"regex_source_addr\":\"\",\"regex_source_addr_ton\":\"\",\"regex_source_addr_npi\":\"\",\"regex_destination_addr\":\"\",\"regex_dest_addr_ton\":\"\",\"regex_dest_addr_npi\":\"\",\"regex_imsi_digits_mask\":\"\",\"regex_network_node_number\":\"\",\"regex_calling_party_address\":\"\",\"is_sri_response\":false,\"destination\":[{\"priority\":1,\"network_id\":3,\"dest_protocol\":\"SMPP\",\"network_type\":\"GW\"}],\"new_source_addr\":\"\",\"new_source_addr_ton\":-1,\"new_source_addr_npi\":-1,\"new_destination_addr\":\"\",\"new_dest_addr_ton\":-1,\"new_dest_addr_npi\":-1,\"add_source_addr_prefix\":\"\",\"add_dest_addr_prefix\":\"\",\"remove_source_addr_prefix\":\"\",\"remove_dest_addr_prefix\":\"\",\"new_gt_sccp_addr_mt\":\"\",\"drop_map_sri\":false,\"network_id_to_map_sri\":-1,\"network_id_to_permanent_failure\":-1,\"drop_temp_failure\":false,\"network_id_temp_failure\":-1,\"check_sri_response\":false,\"origin_protocol\":\"SMPP\",\"origin_network_type\":\"SP\",\"has_filter_rules\":true,\"has_action_rules\":true}";
-        RoutingRule routingRule = Converter.stringToObject(routingRuleString, new TypeReference<>() {
-        });
-        when(routingMatcher.getRouting(any())).thenReturn(routingRule);
-        assertDoesNotThrow(() -> commonProcessor.processMessage(event));
-
-        // Source Address
-        routingRule.setNewSourceAddr("newSourceAddr");
-        routingRule.setNewSourceAddrTon(1);
-        routingRule.setNewSourceAddrNpi(1);
-        routingRule.setRemoveSourceAddrPrefix("removeSourceAddrPrefix");
-        routingRule.setAddSourceAddrPrefix("addSourceAddrPrefix");
-        assertDoesNotThrow(() -> commonProcessor.processMessage(event));
-
-        // Destination Address
-        routingRule.setNewDestinationAddr("newDestinationAddr");
-        routingRule.setNewDestAddrTon(1);
-        routingRule.setNewDestAddrNpi(1);
-        routingRule.setRemoveDestAddrPrefix("removeDestAddrPrefix");
-        routingRule.setAddDestAddrPrefix("addDestAddrPrefix");
-        assertDoesNotThrow(() -> commonProcessor.processMessage(event));
+    void processMessageWhenMessageReceivedThenProcess() {
+        applyRoutingRuleActions(0);
+        applyRoutingRuleActions(1);
+        applyRoutingRuleActions(2);
     }
 
     @Test
@@ -254,7 +266,7 @@ class CommonProcessorTest {
         MessageEvent event = StaticMethods.stringAsEvent(stringEvent);
         Objects.requireNonNull(event, "Event is null");
 
-        String stringSmppGw = "{\"network_id\":6,\"name\":\"smppgw\",\"system_id\":\"smppgw\",\"password\":\"1234\",\"ip\":\"192.168.100.20\",\"port\":2777,\"bind_type\":\"TRANSCEIVER\",\"system_type\":\"\",\"interface_version\":\"IF_50\",\"sessions_number\":1,\"address_ton\":0,\"address_npi\":0,\"address_range\":null,\"tps\":10,\"status\":\"STOPPED\",\"enabled\":1,\"enquire_link_period\":30000,\"enquire_link_timeout\":0,\"request_dlr\":true,\"no_retry_error_code\":\"\",\"retry_alternate_destination_error_code\":\"\",\"bind_timeout\":5000,\"bind_retry_period\":10000,\"pdu_timeout\":5000,\"pdu_degree\":1,\"thread_pool_size\":100,\"mno_id\":1,\"tlv_message_receipt_id\":false,\"message_id_decimal_format\":false,\"active_sessions_numbers\":0,\"protocol\":\"SMPP\",\"auto_retry_error_code\":\"\",\"encoding_iso88591\":3,\"encoding_gsm7\":0,\"encoding_ucs2\":2,\"split_message\":false,\"split_smpp_type\":\"TLV\"}";
+        String stringSmppGw = "{\"network_id\":6,\"name\":\"smppgw\",\"system_id\":\"smppgw\",\"password\":\"1234\",\"ip\":\"192.168.100.20\",\"port\":2777,\"bind_type\":\"TRANSCEIVER\",\"system_type\":\"\",\"interface_version\":\"IF_50\",\"sessions_number\":1,\"address_ton\":0,\"address_npi\":0,\"address_range\":null,\"tps\":10,\"status\":\"STOPPED\",\"enabled\":1,\"enquire_link_period\":30000,\"enquire_link_timeout\":0,\"request_dlr\":1,\"no_retry_error_code\":\"\",\"retry_alternate_destination_error_code\":\"\",\"bind_timeout\":5000,\"bind_retry_period\":10000,\"pdu_timeout\":5000,\"pdu_degree\":1,\"thread_pool_size\":100,\"mno_id\":1,\"tlv_message_receipt_id\":false,\"message_id_decimal_format\":false,\"active_sessions_numbers\":0,\"protocol\":\"SMPP\",\"auto_retry_error_code\":\"\",\"encoding_iso88591\":3,\"encoding_gsm7\":0,\"encoding_ucs2\":2,\"split_message\":false,\"split_smpp_type\":\"TLV\"}";
         Gateway smppGw = Converter.stringToObject(stringSmppGw, new TypeReference<>() {
         });
 
@@ -293,5 +305,38 @@ class CommonProcessorTest {
         event.setDataCoding(2);
         commonProcessor = new CommonProcessor(loadSettings, jedisCluster, appProperties, routingHelper, routingMatcher, gateways, ss7SettingsMap);
         assertDoesNotThrow(() -> commonProcessor.getPartsOfMessage(event));
+    }
+
+    void applyRoutingRuleActions(int dlrMode) {
+        String stringEvent = "{\"msisdn\":null,\"id\":\"1722442489770-7788608933795\",\"message_id\":\"1722442489766-7788604799226\",\"system_id\":\"smppsp\",\"deliver_sm_id\":null,\"deliver_sm_server_id\":null,\"command_status\":0,\"sequence_number\":2,\"source_addr_ton\":1,\"source_addr_npi\":1,\"source_addr\":\"6666\",\"dest_addr_ton\":1,\"dest_addr_npi\":1,\"destination_addr\":\"5555\",\"esm_class\":3,\"validity_period\":\"60\",\"registered_delivery\":1,\"data_coding\":0,\"sm_default_msg_id\":0,\"short_message\":\"Hello!\",\"delivery_receipt\":null,\"status\":null,\"error_code\":null,\"check_submit_sm_response\":null,\"optional_parameters\":null,\"origin_network_type\":\"SP\",\"origin_protocol\":\"SMPP\",\"origin_network_id\":3,\"dest_network_type\":\"GW\",\"dest_protocol\":\"SMPP\",\"dest_network_id\":1,\"routing_id\":1,\"address_nature_msisdn\":null,\"numbering_plan_msisdn\":null,\"remote_dialog_id\":null,\"local_dialog_id\":null,\"sccp_called_party_address_pc\":null,\"sccp_called_party_address_ssn\":null,\"sccp_called_party_address\":null,\"sccp_calling_party_address_pc\":null,\"sccp_calling_party_address_ssn\":null,\"sccp_calling_party_address\":null,\"global_title\":null,\"global_title_indicator\":null,\"translation_type\":null,\"smsc_ssn\":null,\"hlr_ssn\":null,\"msc_ssn\":null,\"map_version\":null,\"is_retry\":false,\"retry_dest_network_id\":\"\",\"retry_number\":null,\"is_last_retry\":false,\"is_network_notify_error\":false,\"due_delay\":0,\"accumulated_time\":0,\"drop_map_sri\":false,\"network_id_to_map_sri\":-1,\"network_id_to_permanent_failure\":-1,\"drop_temp_failure\":false,\"network_id_temp_failure\":-1,\"imsi\":null,\"network_node_number\":null,\"network_node_number_nature_of_address\":null,\"network_node_number_numbering_plan\":null,\"mo_message\":false,\"is_sri_response\":false,\"check_sri_response\":false,\"msg_reference_number\":null,\"total_segment\":null,\"segment_sequence\":null,\"originator_sccp_address\":null,\"udhi\":\"0\",\"udh_json\":null,\"parent_id\":null,\"is_dlr\":" + dlrMode +",\"message_parts\":null}";
+        MessageEvent event = StaticMethods.stringAsEvent(stringEvent);
+        assertNotNull(event);
+        String routingRuleString = "{\"id\":2,\"origin_network_id\":6,\"regex_source_addr\":\"\",\"regex_source_addr_ton\":\"\",\"regex_source_addr_npi\":\"\",\"regex_destination_addr\":\"\",\"regex_dest_addr_ton\":\"\",\"regex_dest_addr_npi\":\"\",\"regex_imsi_digits_mask\":\"\",\"regex_network_node_number\":\"\",\"regex_calling_party_address\":\"\",\"is_sri_response\":false,\"destination\":[{\"priority\":1,\"network_id\":3,\"dest_protocol\":\"SMPP\",\"network_type\":\"GW\"}],\"new_source_addr\":\"\",\"new_source_addr_ton\":-1,\"new_source_addr_npi\":-1,\"new_destination_addr\":\"\",\"new_dest_addr_ton\":-1,\"new_dest_addr_npi\":-1,\"add_source_addr_prefix\":\"\",\"add_dest_addr_prefix\":\"\",\"remove_source_addr_prefix\":\"\",\"remove_dest_addr_prefix\":\"\",\"new_gt_sccp_addr_mt\":\"\",\"drop_map_sri\":false,\"network_id_to_map_sri\":-1,\"network_id_to_permanent_failure\":-1,\"drop_temp_failure\":false,\"network_id_temp_failure\":-1,\"check_sri_response\":false,\"origin_protocol\":\"SMPP\",\"origin_network_type\":\"SP\",\"has_filter_rules\":true,\"has_action_rules\":true}";
+        RoutingRule routingRule = Converter.stringToObject(routingRuleString, new TypeReference<>() {
+        });
+        when(routingMatcher.getRouting(any())).thenReturn(routingRule);
+
+        String stringSmppGw = "{\"network_id\":6,\"name\":\"smppgw\",\"system_id\":\"smppgw\",\"password\":\"1234\",\"ip\":\"192.168.100.20\",\"port\":2777,\"bind_type\":\"TRANSCEIVER\",\"system_type\":\"\",\"interface_version\":\"IF_50\",\"sessions_number\":1,\"address_ton\":0,\"address_npi\":0,\"address_range\":null,\"tps\":10,\"status\":\"STOPPED\",\"enabled\":1,\"enquire_link_period\":30000,\"enquire_link_timeout\":0,\"request_dlr\":" + dlrMode + ",\"no_retry_error_code\":\"\",\"retry_alternate_destination_error_code\":\"\",\"bind_timeout\":5000,\"bind_retry_period\":10000,\"pdu_timeout\":5000,\"pdu_degree\":1,\"thread_pool_size\":100,\"mno_id\":1,\"tlv_message_receipt_id\":false,\"message_id_decimal_format\":false,\"active_sessions_numbers\":0,\"protocol\":\"SMPP\",\"auto_retry_error_code\":\"\",\"encoding_iso88591\":3,\"encoding_gsm7\":0,\"encoding_ucs2\":2,\"split_message\":false,\"split_smpp_type\":\"TLV\"}";
+        Gateway smppGw = Converter.stringToObject(stringSmppGw, new TypeReference<>() {});
+
+        gateways.put(event.getDestNetworkId(), smppGw);
+        when(this.gateways.get(anyInt())).thenReturn(smppGw);
+        assertDoesNotThrow(() -> commonProcessor.processMessage(event));
+
+        // Source Address
+        routingRule.setNewSourceAddr("newSourceAddr");
+        routingRule.setNewSourceAddrTon(1);
+        routingRule.setNewSourceAddrNpi(1);
+        routingRule.setRemoveSourceAddrPrefix("removeSourceAddrPrefix");
+        routingRule.setAddSourceAddrPrefix("addSourceAddrPrefix");
+        assertDoesNotThrow(() -> commonProcessor.processMessage(event));
+
+        // Destination Address
+        routingRule.setNewDestinationAddr("newDestinationAddr");
+        routingRule.setNewDestAddrTon(1);
+        routingRule.setNewDestAddrNpi(1);
+        routingRule.setRemoveDestAddrPrefix("removeDestAddrPrefix");
+        routingRule.setAddDestAddrPrefix("addDestAddrPrefix");
+        assertDoesNotThrow(() -> commonProcessor.processMessage(event));
     }
 }

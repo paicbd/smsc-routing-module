@@ -88,10 +88,7 @@ public class LoadSettings {
             log.info("Error trying update ss7 setting for network id {}", networkId);
             return;
         }
-
-        Ss7Settings ss7SettingsToUpdate = Converter.stringToObject(ss7Setting, new TypeReference<>() {
-        });
-
+        Ss7Settings ss7SettingsToUpdate = Converter.stringToObject(ss7Setting, Ss7Settings.class);
         this.ss7SettingsMap.put(networkId, ss7SettingsToUpdate);
         log.info("Updated ss7 settings for network id {}: {}", networkId, ss7SettingsToUpdate);
     }

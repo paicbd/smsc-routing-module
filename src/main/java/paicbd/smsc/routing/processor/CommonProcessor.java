@@ -10,6 +10,7 @@ import com.paicbd.smsc.dto.UtilsRecords;
 import com.paicbd.smsc.exception.RTException;
 import com.paicbd.smsc.utils.Converter;
 import com.paicbd.smsc.utils.Generated;
+import com.paicbd.smsc.utils.RequestDelivery;
 import com.paicbd.smsc.utils.UtilsEnum;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -124,12 +125,20 @@ public class CommonProcessor {
             messageEvent.setEsmClass(3);
             messageEvent.setDelReceipt(messageEvent.getShortMessage());
             messageEvent.setSystemId(null);
+            messageEvent.setRegisteredDelivery(RequestDelivery.NON_REQUEST_DLR.getValue());
         }
 
         if ("SS7".equalsIgnoreCase(messageEvent.getDestProtocol())) {
             setSS7Settings(messageEvent);
         }
         this.applyRoutingRulesActions(messageEvent, routing);
+        if ("GW".equalsIgnoreCase(destination.getNetworkType()) &&  !"SS7".equalsIgnoreCase(destination.getProtocol())) {
+            var gateway = this.gateways.get(destination.getNetworkId());
+            var requestDlr = RequestDelivery.fromInt(gateway.getRequestDLR());
+            if (requestDlr != RequestDelivery.TRANSPARENT) {
+                messageEvent.setRegisteredDelivery(requestDlr == RequestDelivery.REQUEST_DLR ? 1 : 0);
+            }
+        }
         this.routingHelper.prepareCdr(messageEvent, UtilsEnum.CdrStatus.ENQUEUE, "", false);
     }
 

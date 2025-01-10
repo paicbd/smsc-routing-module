@@ -12,6 +12,7 @@ public class AppConstants {
     public static final String DELETE_ROUTING_RULE = "/app/delete/routingRules";
     public static final String UPDATE_GS_SMPP_HTTP = "/app/generalSettings";
     public static final String UPDATE_SS7_CONFIG = "/app/ss7/updateGateway";
+    public static final String CONNECT_SS7_GATEWAY = "/app/ss7/connectGateway";
     public static final String DELETE_SS7_CONFIG = "/app/ss7/deleteGateway";
 	public static final String UPDATE_SMPP_GATEWAY = "/app/updateGateway";
     public static final String CONNECT_SMPP_GATEWAY = "/app/connectGateway";
