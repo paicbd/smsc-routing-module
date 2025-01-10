@@ -58,16 +58,13 @@ public class BeansDefinition {
 
     @Bean
     public JedisCluster jedisCluster() {
-        UtilsRecords.JedisConfigParams params = getJedisConfigParams();
-        return Converter.paramsToJedisCluster(params);
-    }
-
-    private UtilsRecords.JedisConfigParams getJedisConfigParams() {
-        final int maxTotal = this.appProperties.getRedisMaxTotal();
-        final int minIdle = this.appProperties.getRedisMinIdle();
-        final int maxIdle = this.appProperties.getRedisMaxIdle();
-        final boolean blockWhenExhausted = this.appProperties.isRedisBlockWhenExhausted();
-        return new UtilsRecords.JedisConfigParams(this.appProperties.getRedisNodes(), maxTotal, minIdle, maxIdle, blockWhenExhausted);
+        return Converter.paramsToJedisCluster(
+                new UtilsRecords.JedisConfigParams(appProperties.getRedisNodes(), appProperties.getRedisMaxTotal(),
+                        appProperties.getRedisMinIdle(), appProperties.getRedisMaxIdle(),
+                        appProperties.isRedisBlockWhenExhausted(), appProperties.getRedisConnectionTimeout(),
+                        appProperties.getRedisSoTimeout(), appProperties.getRedisMaxAttempts(),
+                        appProperties.getRedisUser(), appProperties.getRedisPassword())
+        );
     }
 
     @Bean

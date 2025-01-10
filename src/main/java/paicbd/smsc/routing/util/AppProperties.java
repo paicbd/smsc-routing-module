@@ -1,5 +1,6 @@
 package paicbd.smsc.routing.util;
 
+import com.paicbd.smsc.utils.Generated;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -8,6 +9,7 @@ import java.util.List;
 
 @Getter
 @Component
+@Generated
 public class AppProperties {
 	@Value("${spring.application.name}")
     private String instanceName = "routing";
@@ -26,6 +28,21 @@ public class AppProperties {
 
     @Value("${redis.threadPool.blockWhenExhausted}")
     private boolean redisBlockWhenExhausted;
+
+    @Value("${redis.connection.timeout:0}")
+    private int redisConnectionTimeout;
+
+    @Value("${redis.so.timeout:0}")
+    private int redisSoTimeout;
+
+    @Value("${redis.maxAttempts:0}")
+    private int redisMaxAttempts;
+
+    @Value("${redis.connection.password:}")
+    private String redisPassword;
+
+    @Value("${redis.connection.user:}")
+    private String redisUser;
 
     @Value("${redis.preMessageList}")
     private String preMessageList;
@@ -81,7 +98,7 @@ public class AppProperties {
     @Value("${websocket.header.name}")
     private String wsHeaderName;
 
-    @Value("${websocket.server.retryInterval}")
+    @Value("${websocket.retry.intervalSeconds}")
     private int wsRetryInterval;
 
     @Value("${websocket.header.value}")
