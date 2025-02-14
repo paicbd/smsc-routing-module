@@ -6,6 +6,7 @@ import com.paicbd.smsc.dto.RoutingRule;
 import com.paicbd.smsc.dto.ServiceProvider;
 import com.paicbd.smsc.dto.UtilsRecords;
 import com.paicbd.smsc.utils.Converter;
+import com.paicbd.smsc.utils.Generated;
 import com.paicbd.smsc.ws.SocketSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,12 +16,14 @@ import com.paicbd.smsc.dto.Ss7Settings;
 import paicbd.smsc.routing.util.AppProperties;
 import redis.clients.jedis.JedisCluster;
 
+import java.net.http.HttpClient;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Slf4j
+@Generated
 @Configuration
 @RequiredArgsConstructor
 public class BeansDefinition {
@@ -54,6 +57,11 @@ public class BeansDefinition {
     @Bean
     public SocketSession socketSession() {
         return new SocketSession("routing");
+    }
+
+    @Bean
+    public HttpClient httpClient() {
+        return HttpClient.newHttpClient();
     }
 
     @Bean

@@ -1,13 +1,16 @@
-package paicbd.smsc.routing.util;
+package paicbd.smsc.routing.component;
 
 import com.paicbd.smsc.cdr.CdrProcessor;
 import com.paicbd.smsc.dto.MessageEvent;
 import com.paicbd.smsc.dto.UtilsRecords;
+import com.paicbd.smsc.utils.Converter;
 import com.paicbd.smsc.utils.UtilsEnum;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import paicbd.smsc.routing.util.AppProperties;
+import paicbd.smsc.routing.util.StaticMethods;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -50,12 +53,12 @@ public class RoutingHelper {
 
     public List<MessageEvent> stringListAsEventList(List<String> stringList) {
         return stringList.parallelStream()
-                .map(StaticMethods::stringAsEvent)
+                .map(messageInRaw -> Converter.stringToObject(messageInRaw, MessageEvent.class))
                 .filter(Objects::nonNull)
                 .toList();
     }
 
-    public void relocateMessageEvent(List<MessageEvent> messageList) {
+    private void relocateMessageEvent(List<MessageEvent> messageList) {
         if (!messageList.isEmpty()) {
             this.rPushExecutorService.execute(
                     this.putMessageListInRedis(this.appProperties.getSmppMessageList(), "SMPP", messageList)
@@ -69,7 +72,7 @@ public class RoutingHelper {
         }
     }
 
-    public Runnable putMessageListInRedis(String queueName, String protocol, List<MessageEvent> messageEventList) {
+    private Runnable putMessageListInRedis(String queueName, String protocol, List<MessageEvent> messageEventList) {
         return () -> {
             var filteredList = messageEventList
                     .parallelStream()
@@ -89,13 +92,13 @@ public class RoutingHelper {
         };
     }
 
-    public void relocateDlrEvent(List<MessageEvent> dlrList) {
+    private void relocateDlrEvent(List<MessageEvent> dlrList) {
         if (!dlrList.isEmpty()) {
             this.dlrExecutorService.execute(this.putDlrListInRedis(dlrList));
         }
     }
 
-    public Runnable putDlrListInRedis(List<MessageEvent> dlrList) {
+    private Runnable putDlrListInRedis(List<MessageEvent> dlrList) {
         return () -> Flux.fromIterable(dlrList)
                 .subscribeOn(Schedulers.boundedElastic())
                 .groupBy(MessageEvent::getDestProtocol)
@@ -114,7 +117,7 @@ public class RoutingHelper {
                         })).subscribe();
     }
 
-    public void processPush(List<MessageEvent> itemsToProcessLikeMessage, List<MessageEvent> itemsToProcessLikeDlr) {
+    private void processPush(List<MessageEvent> itemsToProcessLikeMessage, List<MessageEvent> itemsToProcessLikeDlr) {
         this.relocateMessageEvent(itemsToProcessLikeMessage);
         this.relocateDlrEvent(itemsToProcessLikeDlr);
     }
@@ -134,12 +137,12 @@ public class RoutingHelper {
         }
     }
 
-    public UtilsRecords.CdrDetail toCdrDetail(
+    private UtilsRecords.CdrDetail toCdrDetail(
             MessageEvent event, UtilsEnum.CdrStatus status, String comment) {
         return event.toCdrDetail(UtilsEnum.Module.ROUTING, StaticMethods.getMessageType(event), status, comment);
     }
 
-    private void shutdown() {
+    public void shutdown() {
         this.dlrExecutorService.shutdown();
         this.rPushExecutorService.shutdown();
     }

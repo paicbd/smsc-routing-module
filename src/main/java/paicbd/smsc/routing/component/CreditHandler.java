@@ -1,4 +1,4 @@
-package paicbd.smsc.routing.util;
+package paicbd.smsc.routing.component;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -14,20 +14,26 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.paicbd.smsc.utils.Converter;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.Assert;
+import paicbd.smsc.routing.util.AppProperties;
 import reactor.core.publisher.Flux;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class CreditHandler {
-    private final HttpClient httpClient = HttpClient.newHttpClient();
+    private static final String X_API_KEY = "X-API-Key";
 
+    private final HttpClient httpClient;
     private final AppProperties appProperties;
     private final ConcurrentMap<Integer, AtomicLong> creditUsed;
 
@@ -37,7 +43,7 @@ public class CreditHandler {
         ConcurrentMap<Integer, AtomicInteger> copy = new ConcurrentHashMap<>();
         this.creditUsed.forEach((k, v) -> copy.put(k, new AtomicInteger((int) v.get())));
         List<Map<String, Object>> body = this.getCreditUsedByServiceProvider(copy).collectList().block();
-        Objects.requireNonNull(body, "The body is null. No request will be sent to rating service");
+        Assert.notNull(body, "The body is null. No request will be sent to rating service");
 
         if (body.isEmpty()) {
             log.debug("The body is empty. No request will be sent to rating service");
@@ -48,13 +54,13 @@ public class CreditHandler {
             log.debug("Sending request {} to rating service", body);
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(this.appProperties.getBackendUrl().concat(this.appProperties.getInstanceName())))
-                    .header("Content-Type", "application/json")
-                    .header("X-API-Key", this.appProperties.getBackendApiKey())
+                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                    .header(X_API_KEY, this.appProperties.getBackendApiKey())
                     .POST(HttpRequest.BodyPublishers.ofString(Converter.valueAsString(body), StandardCharsets.UTF_8))
                     .build();
 
             HttpResponse<String> response = this.httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() == 200) {
+            if (Objects.equals(response.statusCode(), HttpStatus.OK.value())) {
                 log.debug("Request sent successfully to rating service with status code 200");
                 copy.forEach((k, v) -> this.creditUsed.get(k).addAndGet(-v.get()));
                 return;

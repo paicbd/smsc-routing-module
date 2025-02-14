@@ -1,6 +1,5 @@
 package paicbd.smsc.routing.processor;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.paicbd.smsc.dto.Gateway;
 import com.paicbd.smsc.dto.GeneralSettings;
 import com.paicbd.smsc.dto.MessageEvent;
@@ -17,10 +16,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.jsmpp.bean.DeliveryReceipt;
 import org.jsmpp.util.InvalidDeliveryReceiptException;
 import org.springframework.stereotype.Component;
-import paicbd.smsc.routing.loaders.LoadSettings;
+import org.springframework.util.Assert;
+import paicbd.smsc.routing.loaders.SettingsLoader;
 import paicbd.smsc.routing.util.AppProperties;
-import paicbd.smsc.routing.util.RoutingMatcher;
-import paicbd.smsc.routing.util.RoutingHelper;
+import paicbd.smsc.routing.component.RoutingMatcher;
+import paicbd.smsc.routing.component.RoutingHelper;
 import redis.clients.jedis.JedisCluster;
 
 import java.util.Comparator;
@@ -38,39 +38,60 @@ public class CommonProcessor {
     private static final int SUCCESS_STATUS = 0;
     private static final int FAILURE_STATUS = 1;
 
-    private final LoadSettings loadSettings;
+    private final SettingsLoader settingsLoader;
     private final JedisCluster jedisCluster;
     private final AppProperties appProperties;
     private final RoutingHelper routingHelper;
     private final RoutingMatcher routingMatcher;
     private final ConcurrentMap<Integer, Gateway> gateways;
-    private final ConcurrentMap<Integer, Ss7Settings> ss7SettingsMap;
 
     /**
      * This variable represents a mapping between different message types and their corresponding lengths.
      *
      * <p><strong>Variable Values:</strong>
      * <ul>
-     *   <li><strong>SMPP_UDH_2:</strong> Value 77. This involves only 'encoding' 2 (UNICODE) and 'splitSmppType' UDH. </li>
-     *   <li><strong>SMPP_UDH_DEFAULT:</strong> Value 154. This involves 'encoding' 0 (GSM7), 1 (UTF-8), 3 (ISO-8859-1) and 'splitSmppType' UDH.</li>
-     *   <li><strong>SMPP_TLV_2:</strong> Value 80. This involves only 'encoding' 2 (UNICODE) and 'splitSmppType' TLV.</li>
-     *   <li><strong>SMPP_TLV_DEFAULT:</strong> Value 160. This involves 'encoding' 0 (GSM7), 1 (UTF-8), 3 (ISO-8859-1) and 'splitSmppType' TLV.</li>
-     *   <li><strong>SS7_2:</strong> Value 67. This involves only 'encoding' 2 (UNICODE), SS7 only supports UDH, so there is no need to check 'splitSmppType'.</li>
-     *   <li><strong>SS7_DEFAULT:</strong> Value 152. This involves 'encoding' 0 (GSM7), 1 (UTF-8), 3 (ISO-8859-1), SS7 only supports UDH, so there is no need to check 'splitSmppType'.</li>
+     *   <li><strong>SMPP_UDH_2:</strong> Value 127. This involves only 'encoding' 2 (UNICODE) and 'splitSmppType' UDH. </li>
+     *   <li><strong>SMPP_UDH_DEFAULT:</strong> Value 254. This involves 'encoding' 0 (GSM7), 1 (UTF-8), 3 (ISO-8859-1) and 'splitSmppType' UDH.</li>
+     *   <li><strong>SMPP_TLV_2:</strong> Value 127. This involves only 'encoding' 2 (UNICODE) and 'splitSmppType' TLV.</li>
+     *   <li><strong>SMPP_TLV_DEFAULT:</strong> Value 254. This involves 'encoding' 0 (GSM7), 1 (UTF-8), 3 (ISO-8859-1) and 'splitSmppType' TLV.</li>
+     *   <li><strong>SS7_2:</strong> Value 70. This involves only 'encoding' 2 (UNICODE), SS7 only supports UDH, so there is no need to check 'splitSmppType'.</li>
+     *   <li><strong>SS7_DEFAULT:</strong> Value 160. This involves 'encoding' 0 (GSM7), 1 (UTF-8), 3 (ISO-8859-1), SS7 only supports UDH, so there is no need to check 'splitSmppType'.</li>
      * </ul>
      * </p>
      */
     private static final Map<String, Integer> LENGTH_BY_PROTOCOL_AND_ENCODING = Map.of(
-            "SMPP_UDH_2", 77,
-            "SMPP_UDH_DEFAULT", 154,
-            "SMPP_TLV_2", 80,
-            "SMPP_TLV_DEFAULT", 160,
-            "SS7_2", 67,
-            "SS7_DEFAULT", 135
+            "SMPP_UDH_2", 127,
+            "SMPP_UDH_DEFAULT", 254,
+            "SMPP_TLV_2", 127,
+            "SMPP_TLV_DEFAULT", 254,
+            "SS7_2", 70,
+            "SS7_DEFAULT", 160
+    );
+
+    /**
+     * This variable represents a mapping between different message types and their corresponding lengths which must be decreased if it exceeds the maximum length
+     * defined in the map LENGTH_BY_PROTOCOL_AND_ENCODING.
+     * </br> </br>
+     * This decremented length corresponds to the length that will be used for UDH headers in multipart messages.
+     * 
+     * <p><strong>Variable Values:</strong>
+     * <ul>
+     *   <li><strong>SMPP_UDH_2:</strong> Value 3. This involves only 'encoding' 2 (UNICODE) and 'splitSmppType' UDH. </li>
+     *   <li><strong>SMPP_UDH_DEFAULT:</strong> Value 6. This involves 'encoding' 0 (GSM7), 1 (UTF-8), 3 (ISO-8859-1) and 'splitSmppType' UDH.</li>
+     *   <li><strong>SS7_2:</strong> Value 3. This involves only 'encoding' 2 (UNICODE), SS7 only supports UDH.</li>
+     *   <li><strong>SS7_DEFAULT:</strong> Value 6. This involves 'encoding' 0 (GSM7), 1 (UTF-8), 3 (ISO-8859-1), SS7 only supports UDH.</li>
+     * </ul>
+     * </p>
+     */
+    private static final Map<String, Integer> DECREASE_LENGTH_BY_PROTOCOL_AND_ENCODING = Map.of(
+            "SMPP_UDH_2", 3,
+            "SMPP_UDH_DEFAULT", 6,
+            "SS7_2", 3,
+            "SS7_DEFAULT", 7
     );
 
     public void setUpInitialSettings(MessageEvent event) {
-        GeneralSettings smppHttpSettings = this.loadSettings.getSmppHttpSettings();
+        GeneralSettings smppHttpSettings = this.settingsLoader.getSmppHttpSettings();
         event.setSourceAddrTon(Objects.isNull(event.getSourceAddrTon()) ? smppHttpSettings.getSourceAddrTon() : event.getSourceAddrTon());
         event.setSourceAddrNpi(Objects.isNull(event.getSourceAddrNpi()) ? smppHttpSettings.getSourceAddrNpi() : event.getSourceAddrNpi());
         event.setDestAddrTon(Objects.isNull(event.getDestAddrTon()) ? smppHttpSettings.getDestAddrTon() : event.getDestAddrTon());
@@ -211,7 +232,7 @@ public class CommonProcessor {
     }
 
     private void setSS7Settings(MessageEvent event) {
-        Ss7Settings ss7Config = this.loadSettings.getSs7Settings(event.getDestNetworkId());
+        Ss7Settings ss7Config = this.settingsLoader.getSs7Settings(event.getDestNetworkId());
         if (Objects.isNull(ss7Config)) {
             log.error("No SS7 settings found for network id {}", event.getDestNetworkId());
             return;
@@ -235,24 +256,29 @@ public class CommonProcessor {
         boolean splitMessage;
         String splitBy;
         if ("SS7".equalsIgnoreCase(destinationProtocol)) {
-            Ss7Settings ss7Settings = ss7SettingsMap.get(messageEvent.getDestNetworkId());
-            Objects.requireNonNull(ss7Settings, "No SS7 gateway found for network id " + messageEvent.getDestNetworkId());
+            Ss7Settings ss7Settings = settingsLoader.getSs7Settings(messageEvent.getDestNetworkId());
+            Assert.notNull(ss7Settings, "No SS7 gateway found for network id " + messageEvent.getDestNetworkId());
             splitMessage = ss7Settings.isSplitMessage();
             splitBy = "UDH";
             encoding = dataCoding == 0 ? 0 : 2;
         } else {
             Gateway gateway = this.gateways.get(messageEvent.getDestNetworkId());
-            Objects.requireNonNull(gateway, "No SMPP/HTTP gateway found for network id " + messageEvent.getDestNetworkId());
+            Assert.notNull(gateway, "No SMPP/HTTP gateway found for network id " + messageEvent.getDestNetworkId());
             splitMessage = gateway.isSplitMessage();
             splitBy = gateway.getSplitSmppType().toUpperCase();
             encoding = getEncoding(dataCoding, gateway.getEncodingGsm7(), gateway.getEncodingUcs2(), gateway.getEncodingIso88591());
         }
         int lengthForPartByRule = calculateLengthByRule(destinationProtocol, splitBy, encoding);
         int longMessageLength = messageEvent.getShortMessage().length();
+
+        if (lengthForPartByRule < longMessageLength) {
+            lengthForPartByRule = reCalculateLengthByRule(destinationProtocol, splitBy, encoding);
+        }
+
         int totalParts = (longMessageLength + lengthForPartByRule - 1) / lengthForPartByRule;
         return new MessagePart(
                 splitMessage ? totalParts : 1,
-                lengthForPartByRule,
+                splitMessage ? lengthForPartByRule : longMessageLength,
                 encoding,
                 "UDH".equalsIgnoreCase(splitBy)
         );
@@ -267,27 +293,37 @@ public class CommonProcessor {
         };
     }
 
-    private static int calculateLengthByRule(String destinationProtocol, String splitCriteria, int encodingType) {
+    private static String createKeyToCalculateLength(String destinationProtocol, String splitCriteria, int encodingType) {
         String protocolKey = destinationProtocol.toUpperCase();
         String smppSplitCriteria = "SMPP".equalsIgnoreCase(destinationProtocol) ? splitCriteria : null;
         String encodingKey = encodingType == 2 ? "2" : "DEFAULT";
-        String protocolEncodingKey = Objects.isNull(smppSplitCriteria)
+        return Objects.isNull(smppSplitCriteria)
                 ? String.format("%s_%s", protocolKey, encodingKey)
                 : String.format("%s_%s_%s", protocolKey, smppSplitCriteria, encodingKey);
+    }
 
+    private static int calculateLengthByRule(String destinationProtocol, String splitCriteria, int encodingType) {
+        String protocolEncodingKey = createKeyToCalculateLength(destinationProtocol, splitCriteria, encodingType);
         return LENGTH_BY_PROTOCOL_AND_ENCODING.get(protocolEncodingKey);
+    }
+
+    private static int reCalculateLengthByRule(String destinationProtocol, String splitCriteria, int encodingType) {
+        String protocolEncodingKey = createKeyToCalculateLength(destinationProtocol, splitCriteria, encodingType);
+        int maxLength = LENGTH_BY_PROTOCOL_AND_ENCODING.get(protocolEncodingKey);
+
+        if (DECREASE_LENGTH_BY_PROTOCOL_AND_ENCODING.containsKey(protocolEncodingKey)) {
+            return maxLength - DECREASE_LENGTH_BY_PROTOCOL_AND_ENCODING.get(protocolEncodingKey);
+        }
+        return maxLength;
     }
 
     public void processDlr(MessageEvent messageEvent) {
         if (Boolean.TRUE.equals(messageEvent.getCheckSubmitSmResponse())) {
-            String key = getKeyFromMessageEvent(messageEvent);
+            String key = messageEvent.getDeliverSmId();
             String resultListName = chooseResultListNameBasedOnProtocol(messageEvent);
             String resultInRawFormat = jedisCluster.hget(resultListName, key.toUpperCase());
             handleResultAvailability(resultInRawFormat, key, messageEvent);
-
-            UtilsRecords.SubmitSmResponseEvent result = Converter.stringToObject(resultInRawFormat, new TypeReference<>() {
-            });
-
+            UtilsRecords.SubmitSmResponseEvent result = Converter.stringToObject(resultInRawFormat, UtilsRecords.SubmitSmResponseEvent.class);
             jedisCluster.hdel(resultListName, key);
             if ("GW".equalsIgnoreCase(result.originNetworkType()) && "SMPP".equalsIgnoreCase(result.originProtocol())) {
                 log.warn("This message is ignored because origin is SMPP and network type is Gateway");
@@ -296,7 +332,6 @@ public class CommonProcessor {
                         messageEvent, UtilsEnum.CdrStatus.FAILED, "IGNORED DUE ORIGIN IS SMPP AND ORIGIN NETWORK TYPE IS GATEWAY", true);
                 return;
             }
-
             messageEvent.setDestProtocol(result.originProtocol());
             messageEvent.setDestNetworkId(result.originNetworkId());
             messageEvent.setTotalSegment(result.totalSegment());
@@ -307,10 +342,6 @@ public class CommonProcessor {
             setDetailsForMessageEventAsPerOriginProtocol(messageEvent, result);
             this.routingHelper.prepareCdr(messageEvent, UtilsEnum.CdrStatus.ENQUEUE, "", false);
         }
-    }
-
-    private String getKeyFromMessageEvent(MessageEvent messageEvent) {
-        return messageEvent.getDeliverSmId();
     }
 
     private String chooseResultListNameBasedOnProtocol(MessageEvent messageEvent) {
@@ -340,7 +371,7 @@ public class CommonProcessor {
                 messageEvent.setDelReceipt(deliveryReceipt.toString());
                 messageEvent.setShortMessage(deliveryReceipt.toString());
             } catch (InvalidDeliveryReceiptException e) {
-                log.info("Error casting deliveryReceipt for {}", messageEvent.getDelReceipt());
+                log.error("Error casting deliveryReceipt for {}", messageEvent.getDelReceipt());
             }
         }
     }

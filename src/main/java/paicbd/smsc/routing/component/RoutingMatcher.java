@@ -1,4 +1,4 @@
-package paicbd.smsc.routing.util;
+package paicbd.smsc.routing.component;
 
 import com.paicbd.smsc.dto.MessageEvent;
 import com.paicbd.smsc.dto.RoutingRule;
