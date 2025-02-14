@@ -3,8 +3,8 @@ package paicbd.smsc.routing.util;
 import com.paicbd.smsc.utils.Generated;
 
 @Generated
-public class AppConstants {
-    private AppConstants() {
+public class Constants {
+    private Constants() {
         throw new IllegalStateException("Utility class");
     }
 

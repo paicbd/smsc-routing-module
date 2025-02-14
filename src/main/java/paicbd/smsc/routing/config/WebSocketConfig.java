@@ -1,36 +1,39 @@
 package paicbd.smsc.routing.config;
 
 import com.paicbd.smsc.dto.UtilsRecords;
+import com.paicbd.smsc.utils.Generated;
 import com.paicbd.smsc.ws.SocketClient;
 import com.paicbd.smsc.ws.SocketSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import paicbd.smsc.routing.component.CustomFrameHandler;
 import paicbd.smsc.routing.util.AppProperties;
 
 import java.util.List;
 
-import static paicbd.smsc.routing.util.AppConstants.CONNECT_HTTP_GATEWAY;
-import static paicbd.smsc.routing.util.AppConstants.CONNECT_SMPP_GATEWAY;
-import static paicbd.smsc.routing.util.AppConstants.CONNECT_SS7_GATEWAY;
-import static paicbd.smsc.routing.util.AppConstants.DELETE_HTTP_GATEWAY;
-import static paicbd.smsc.routing.util.AppConstants.DELETE_ROUTING_RULE;
-import static paicbd.smsc.routing.util.AppConstants.DELETE_SERVICE_HTTP_PROVIDER_ENDPOINT;
-import static paicbd.smsc.routing.util.AppConstants.DELETE_SERVICE_SMPP_PROVIDER_ENDPOINT;
-import static paicbd.smsc.routing.util.AppConstants.DELETE_SMPP_GATEWAY;
-import static paicbd.smsc.routing.util.AppConstants.DELETE_SS7_CONFIG;
-import static paicbd.smsc.routing.util.AppConstants.STOP_HTTP_GATEWAY;
-import static paicbd.smsc.routing.util.AppConstants.STOP_SMPP_GATEWAY;
-import static paicbd.smsc.routing.util.AppConstants.UPDATE_GS_SMPP_HTTP;
-import static paicbd.smsc.routing.util.AppConstants.UPDATE_HTTP_GATEWAY;
-import static paicbd.smsc.routing.util.AppConstants.UPDATE_ROUTING_RULE;
-import static paicbd.smsc.routing.util.AppConstants.UPDATE_SERVICE_HTTP_PROVIDER_ENDPOINT;
-import static paicbd.smsc.routing.util.AppConstants.UPDATE_SERVICE_SMPP_PROVIDER_ENDPOINT;
-import static paicbd.smsc.routing.util.AppConstants.UPDATE_SMPP_GATEWAY;
-import static paicbd.smsc.routing.util.AppConstants.UPDATE_SS7_CONFIG;
+import static paicbd.smsc.routing.util.Constants.CONNECT_HTTP_GATEWAY;
+import static paicbd.smsc.routing.util.Constants.CONNECT_SMPP_GATEWAY;
+import static paicbd.smsc.routing.util.Constants.CONNECT_SS7_GATEWAY;
+import static paicbd.smsc.routing.util.Constants.DELETE_HTTP_GATEWAY;
+import static paicbd.smsc.routing.util.Constants.DELETE_ROUTING_RULE;
+import static paicbd.smsc.routing.util.Constants.DELETE_SERVICE_HTTP_PROVIDER_ENDPOINT;
+import static paicbd.smsc.routing.util.Constants.DELETE_SERVICE_SMPP_PROVIDER_ENDPOINT;
+import static paicbd.smsc.routing.util.Constants.DELETE_SMPP_GATEWAY;
+import static paicbd.smsc.routing.util.Constants.DELETE_SS7_CONFIG;
+import static paicbd.smsc.routing.util.Constants.STOP_HTTP_GATEWAY;
+import static paicbd.smsc.routing.util.Constants.STOP_SMPP_GATEWAY;
+import static paicbd.smsc.routing.util.Constants.UPDATE_GS_SMPP_HTTP;
+import static paicbd.smsc.routing.util.Constants.UPDATE_HTTP_GATEWAY;
+import static paicbd.smsc.routing.util.Constants.UPDATE_ROUTING_RULE;
+import static paicbd.smsc.routing.util.Constants.UPDATE_SERVICE_HTTP_PROVIDER_ENDPOINT;
+import static paicbd.smsc.routing.util.Constants.UPDATE_SERVICE_SMPP_PROVIDER_ENDPOINT;
+import static paicbd.smsc.routing.util.Constants.UPDATE_SMPP_GATEWAY;
+import static paicbd.smsc.routing.util.Constants.UPDATE_SS7_CONFIG;
 
 @Slf4j
+@Generated
 @Configuration
 @RequiredArgsConstructor
 public class WebSocketConfig {

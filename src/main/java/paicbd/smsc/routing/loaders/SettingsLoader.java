@@ -1,6 +1,5 @@
 package paicbd.smsc.routing.loaders;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.paicbd.smsc.dto.GeneralSettings;
 import com.paicbd.smsc.utils.Converter;
 import jakarta.annotation.PostConstruct;
@@ -19,7 +18,7 @@ import java.util.concurrent.ConcurrentMap;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class LoadSettings {
+public class SettingsLoader {
     private final JedisCluster jedisCluster;
     private final AppProperties appProperties;
     private final ConcurrentMap<Integer, Ss7Settings> ss7SettingsMap;
@@ -44,27 +43,22 @@ public class LoadSettings {
             return;
         }
 
-        this.smppHttpSettings = Converter.stringToObject(gsRaw, new TypeReference<>() {
-        });
+        this.smppHttpSettings = Converter.stringToObject(gsRaw, GeneralSettings.class);
     }
 
-    public void loadAllSs7Settings() {
+    private void loadAllSs7Settings() {
         log.info("Start loading ss7 settings");
         Map<String, String> hashValues = this.jedisCluster.hgetAll(this.appProperties.getSs7SettingsHash());
-        if (Objects.isNull(hashValues)) {
+        if (hashValues.isEmpty()) {
             log.warn("No ss7 settings found in cache.");
             return;
         }
 
-        for (Map.Entry<String, String> entry : hashValues.entrySet()) {
-            try {
-                String data = entry.getValue();
-                Ss7Settings ss7Setting = Converter.stringToObject(data, Ss7Settings.class);
-                this.addToSs7Map(Integer.parseInt(entry.getKey()), ss7Setting);
-            } catch (Exception e) {
-                log.error("Service provider init error {}", e.getMessage());
-            }
-        }
+        hashValues.forEach((ss7GatewayNetworkId, data) -> {
+            Ss7Settings ss7Setting = Converter.stringToObject(data, Ss7Settings.class);
+            this.addToSs7Map(Integer.parseInt(ss7GatewayNetworkId), ss7Setting);
+        });
+
         log.info("Loaded ss7 settings, settings loaded: {}", ss7SettingsMap.size());
     }
 
@@ -74,16 +68,11 @@ public class LoadSettings {
     }
 
     public Ss7Settings getSs7Settings(Integer networkId) {
-        Ss7Settings ss7Settings = ss7SettingsMap.get(networkId);
-        if (ss7Settings == null) {
-            log.error("Ss7 settings was not found.");
-            return null;
-        }
-        return ss7Settings;
+        return ss7SettingsMap.get(networkId);
     }
 
     public void updateSpecificSs7Setting(Integer networkId) {
-        var ss7Setting = jedisCluster.hget(appProperties.getSs7SettingsHash(), networkId.toString());
+        String ss7Setting = jedisCluster.hget(appProperties.getSs7SettingsHash(), networkId.toString());
         if (Objects.isNull(ss7Setting)) {
             log.info("Error trying update ss7 setting for network id {}", networkId);
             return;

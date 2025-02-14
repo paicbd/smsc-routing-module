@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import paicbd.smsc.routing.util.AppProperties;
-import paicbd.smsc.routing.util.RoutingHelper;
+import paicbd.smsc.routing.component.RoutingHelper;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 import redis.clients.jedis.JedisCluster;
@@ -36,7 +36,7 @@ public class DeliverProcessor implements RoutingProcessor {
         this.start();
     }
 
-    public void start() {
+    private void start() {
         CompletableFuture.runAsync(() -> Flux.interval(Duration.ofSeconds(1))
                 .doOnNext(val -> routingHelper.processEventsFlux(fetchAllMessages()))
                 .subscribe());
