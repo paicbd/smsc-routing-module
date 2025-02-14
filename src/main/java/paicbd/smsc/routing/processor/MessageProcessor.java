@@ -15,8 +15,7 @@ import org.jsmpp.bean.MessageType;
 import org.jsmpp.bean.OptionalParameter;
 import org.springframework.stereotype.Component;
 import paicbd.smsc.routing.util.AppProperties;
-import paicbd.smsc.routing.util.RoutingHelper;
-import paicbd.smsc.routing.util.StaticMethods;
+import paicbd.smsc.routing.component.RoutingHelper;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 import redis.clients.jedis.JedisCluster;
@@ -91,7 +90,7 @@ public class MessageProcessor implements RoutingProcessor {
         }
 
         List<MessageEvent> messageEvents = batch.stream()
-                .map(StaticMethods::stringAsEvent)
+                .map(messageInRaw -> Converter.stringToObject(messageInRaw, MessageEvent.class))
                 .filter(Objects::nonNull)
                 .toList();
         messageEvents.parallelStream().forEach(this::prepareMessage);
@@ -136,8 +135,8 @@ public class MessageProcessor implements RoutingProcessor {
             log.debug("Part {} of {}, message: {}", i + 1, parts, messagePart);
             messagePartEvent.setMessageId(System.currentTimeMillis() + "-" + System.nanoTime());
             if (partMessage.isUdh()) {
-                byte[] udh = Converter.paramsToUdhBytes(messagePart, intReference, parts, partNumber);
-                String udhAsJson = Converter.udhMapToJson(Converter.bytesToUdhMap(udh));
+                byte[] udh = Converter.paramsToUdhBytes(messagePart, partMessage.encoding(), intReference, parts, partNumber);
+                String udhAsJson = Converter.udhMapToJson(Converter.bytesToUdhMap(udh, partMessage.encoding()));
                 messagePartEvent.setUdhJson(udhAsJson);
             } else {
                 OptionalParameter[] opts = Converter.convertToOptionalParameters(intReference, parts, partNumber);
